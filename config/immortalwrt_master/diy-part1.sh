@@ -1,14 +1,31 @@
 #!/bin/bash
+
 #========================================================================================================================
-# https://github.com/ophub/amlogic-s9xxx-openwrt
-# Description: Automatically Build OpenWrt
-# Function: DIY script (Before updating feeds — modify the default IP, hostname, theme, add/remove packages, etc.)
-# Source code repository: https://github.com/immortalwrt/immortalwrt / Branch: master
+# ImmortalWrt custom feeds
+# S905 / ARM64
 #========================================================================================================================
 
-# Add a custom feed source
-# sed -i '$a src-git lienol https://github.com/Lienol/openwrt-package' feeds.conf.default
+echo "=============================================="
+echo " Adding custom feeds"
+echo "=============================================="
 
-# Remove unnecessary packages
-# rm -rf package/emortal/{autosamba,ipv6-helper}
+# ---------------------------------------------------------
+# PassWall
+# ---------------------------------------------------------
+echo "Adding PassWall feeds..."
 
+sed -i '$a src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main' feeds.conf.default
+sed -i '$a src-git passwall_luci https://github.com/Openwrt-Passwall/openwrt-passwall.git;main' feeds.conf.default
+
+# ---------------------------------------------------------
+# Show feeds configuration
+# ---------------------------------------------------------
+echo "=============================================="
+echo " Current feeds.conf.default:"
+echo "=============================================="
+
+tail -n 20 feeds.conf.default
+
+echo "=============================================="
+echo " DIY part1 completed"
+echo "=============================================="
