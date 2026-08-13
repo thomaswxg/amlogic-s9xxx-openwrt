@@ -17,12 +17,13 @@
 #   Samba
 #   TTYD
 #
-# IMPORTANT:
-#   Shadowrocket is NOT an OpenWrt package.
-#   It is an external client application and cannot be compiled
-#   into the OpenWrt firmware.
+# Shadowrocket:
+#   External client application.
+#   It cannot be compiled into OpenWrt.
 #========================================================================================================================
 
+
+set -e
 
 echo ""
 echo "=========================================================="
@@ -32,10 +33,10 @@ echo ""
 
 
 #========================================================================================================================
-# 1. Basic build information
+# 1. Build information
 #========================================================================================================================
 
-echo ">>> Current OpenWrt source:"
+echo ">>> OpenWrt source:"
 git remote -v || true
 
 echo ""
@@ -43,14 +44,10 @@ echo ">>> Current branch:"
 git branch --show-current || true
 
 echo ""
-echo ">>> Kernel:"
-grep -E '^CONFIG_KERNEL' .config 2>/dev/null | head -20 || true
-
-echo ""
 
 
 #========================================================================================================================
-# 2. luci-app-amlogic
+# 2. Install luci-app-amlogic
 #========================================================================================================================
 
 echo "=========================================================="
@@ -59,31 +56,19 @@ echo "=========================================================="
 
 rm -rf package/luci-app-amlogic
 
-git clone --depth=1 \
+git clone \
+    --depth=1 \
     -b main \
     https://github.com/ophub/luci-app-amlogic.git \
     package/luci-app-amlogic
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clone luci-app-amlogic"
-    exit 1
-fi
-
-echo "luci-app-amlogic installed successfully."
+echo "PASS: luci-app-amlogic installed."
 
 echo ""
 
 
 #========================================================================================================================
-# 3. PassWall
-#
-# PassWall feeds should already be added by diy-part1.sh.
-#
-# Example:
-#   passwall_packages
-#   passwall_luci
-#
-# We DO NOT add them again here.
+# 3. Check PassWall feeds
 #========================================================================================================================
 
 echo "=========================================================="
@@ -106,7 +91,23 @@ echo ""
 
 
 #========================================================================================================================
-# 4. OpenClash
+# 4. Install PassWall feeds
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Installing PassWall feed packages"
+echo "=========================================================="
+
+./scripts/feeds install -a -p passwall_packages || true
+./scripts/feeds install -a -p passwall_luci || true
+
+echo "PassWall feed installation completed."
+
+echo ""
+
+
+#========================================================================================================================
+# 5. Install OpenClash
 #========================================================================================================================
 
 echo "=========================================================="
@@ -120,11 +121,6 @@ git clone \
     --depth=1 \
     https://github.com/vernesong/OpenClash.git \
     /tmp/OpenClash
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clone OpenClash."
-    exit 1
-fi
 
 if [ -d "/tmp/OpenClash/luci-app-openclash" ]; then
 
@@ -141,13 +137,13 @@ fi
 
 rm -rf /tmp/OpenClash
 
-echo "OpenClash installed successfully."
+echo "PASS: OpenClash installed."
 
 echo ""
 
 
 #========================================================================================================================
-# 5. HomeProxy
+# 6. Install HomeProxy
 #========================================================================================================================
 
 echo "=========================================================="
@@ -162,11 +158,6 @@ git clone \
     https://github.com/immortalwrt/homeproxy.git \
     /tmp/homeproxy
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to clone HomeProxy."
-    exit 1
-fi
-
 mkdir -p package/luci-app-homeproxy
 
 cp -a \
@@ -175,111 +166,13 @@ cp -a \
 
 rm -rf /tmp/homeproxy
 
-echo "HomeProxy installed successfully."
+echo "PASS: HomeProxy installed."
 
 echo ""
 
 
 #========================================================================================================================
-# 6. AdGuard Home
-#========================================================================================================================
-
-echo "=========================================================="
-echo " Installing AdGuard Home"
-echo "=========================================================="
-
-# Official OpenWrt/ImmortalWrt package name
-#
-# luci-app-adguardhome is NOT assumed here.
-# We first enable the actual AdGuard Home package.
-#
-
-cat >> .config <<'EOF'
-
-# ==========================================================
-# AdGuard Home
-# ==========================================================
-CONFIG_PACKAGE_adguardhome=y
-
-EOF
-
-echo "AdGuard Home package selected."
-
-echo ""
-
-
-#========================================================================================================================
-# 7. Docker
-#========================================================================================================================
-
-echo "=========================================================="
-echo " Installing Docker"
-echo "=========================================================="
-
-cat >> .config <<'EOF'
-
-# ==========================================================
-# Docker
-# ==========================================================
-CONFIG_PACKAGE_docker=y
-CONFIG_PACKAGE_dockerd=y
-CONFIG_PACKAGE_luci-app-dockerman=y
-
-EOF
-
-echo "Docker packages selected."
-
-echo ""
-
-
-#========================================================================================================================
-# 8. Samba
-#========================================================================================================================
-
-echo "=========================================================="
-echo " Installing Samba"
-echo "=========================================================="
-
-cat >> .config <<'EOF'
-
-# ==========================================================
-# Samba
-# ==========================================================
-CONFIG_PACKAGE_samba4-server=y
-CONFIG_PACKAGE_luci-app-samba4=y
-
-EOF
-
-echo "Samba packages selected."
-
-echo ""
-
-
-#========================================================================================================================
-# 9. TTYD
-#========================================================================================================================
-
-echo "=========================================================="
-echo " Installing TTYD"
-echo "=========================================================="
-
-cat >> .config <<'EOF'
-
-# ==========================================================
-# TTYD
-# ==========================================================
-CONFIG_PACKAGE_ttyd=y
-CONFIG_PACKAGE_luci-app-ttyd=y
-
-EOF
-
-echo "TTYD packages selected."
-
-echo ""
-
-
-#========================================================================================================================
-# 10. PassWall LuCI
+# 7. Select PassWall
 #========================================================================================================================
 
 echo "=========================================================="
@@ -295,13 +188,13 @@ CONFIG_PACKAGE_luci-app-passwall=y
 
 EOF
 
-echo "PassWall selected."
+echo "PASS: PassWall selected."
 
 echo ""
 
 
 #========================================================================================================================
-# 11. OpenClash LuCI
+# 8. Select OpenClash
 #========================================================================================================================
 
 echo "=========================================================="
@@ -317,18 +210,18 @@ CONFIG_PACKAGE_luci-app-openclash=y
 
 EOF
 
-echo "OpenClash selected."
+echo "PASS: OpenClash selected."
 
 echo ""
 
 
 #========================================================================================================================
-# 12. HomeProxy LuCI
+# 9. Select HomeProxy
 #========================================================================================================================
 
 echo "=========================================================="
 echo " Selecting HomeProxy"
-#========================================================================================================================
+echo "=========================================================="
 
 cat >> .config <<'EOF'
 
@@ -339,25 +232,115 @@ CONFIG_PACKAGE_luci-app-homeproxy=y
 
 EOF
 
-echo "HomeProxy selected."
+echo "PASS: HomeProxy selected."
 
 echo ""
 
 
 #========================================================================================================================
-# 13. Useful filesystem / Docker dependencies
-#
-# These are useful for Docker/Samba/USB storage.
+# 10. Select AdGuard Home
 #========================================================================================================================
 
 echo "=========================================================="
-echo " Selecting storage support"
+echo " Selecting AdGuard Home"
 echo "=========================================================="
 
 cat >> .config <<'EOF'
 
 # ==========================================================
-# Storage / USB
+# AdGuard Home
+# ==========================================================
+CONFIG_PACKAGE_adguardhome=y
+
+EOF
+
+echo "PASS: AdGuard Home selected."
+
+echo ""
+
+
+#========================================================================================================================
+# 11. Select Docker
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Selecting Docker"
+echo "=========================================================="
+
+cat >> .config <<'EOF'
+
+# ==========================================================
+# Docker
+# ==========================================================
+CONFIG_PACKAGE_docker=y
+CONFIG_PACKAGE_dockerd=y
+CONFIG_PACKAGE_luci-app-dockerman=y
+
+EOF
+
+echo "PASS: Docker selected."
+
+echo ""
+
+
+#========================================================================================================================
+# 12. Select Samba
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Selecting Samba"
+echo "=========================================================="
+
+cat >> .config <<'EOF'
+
+# ==========================================================
+# Samba
+# ==========================================================
+CONFIG_PACKAGE_samba4-server=y
+CONFIG_PACKAGE_luci-app-samba4=y
+
+EOF
+
+echo "PASS: Samba selected."
+
+echo ""
+
+
+#========================================================================================================================
+# 13. Select TTYD
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Selecting TTYD"
+echo "=========================================================="
+
+cat >> .config <<'EOF'
+
+# ==========================================================
+# TTYD
+# ==========================================================
+CONFIG_PACKAGE_ttyd=y
+CONFIG_PACKAGE_luci-app-ttyd=y
+
+EOF
+
+echo "PASS: TTYD selected."
+
+echo ""
+
+
+#========================================================================================================================
+# 14. USB / Storage support
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Selecting USB / Storage support"
+echo "=========================================================="
+
+cat >> .config <<'EOF'
+
+# ==========================================================
+# USB / Storage
 # ==========================================================
 CONFIG_PACKAGE_block-mount=y
 CONFIG_PACKAGE_lsblk=y
@@ -368,13 +351,13 @@ CONFIG_PACKAGE_kmod-fs-vfat=y
 
 EOF
 
-echo "Storage support selected."
+echo "PASS: Storage support selected."
 
 echo ""
 
 
 #========================================================================================================================
-# 14. Useful Docker kernel modules
+# 15. Docker kernel support
 #========================================================================================================================
 
 echo "=========================================================="
@@ -388,48 +371,11 @@ cat >> .config <<'EOF'
 # ==========================================================
 CONFIG_PACKAGE_kmod-veth=y
 CONFIG_PACKAGE_kmod-br-netfilter=y
-CONFIG_PACKAGE_kmod-nf-conntrack=y
-CONFIG_PACKAGE_kmod-nf-nat=y
-CONFIG_PACKAGE_kmod-nft-core=y
-CONFIG_PACKAGE_kmod-nft-nat=y
 CONFIG_PACKAGE_kmod-tun=y
 
 EOF
 
-echo "Docker kernel support selected."
-
-echo ""
-
-
-#========================================================================================================================
-# 15. Remove duplicated configuration entries
-#
-# The same CONFIG_PACKAGE lines may appear multiple times because
-# diy scripts can be executed more than once.
-#
-# Keep only the last value of each package configuration.
-#========================================================================================================================
-
-echo "=========================================================="
-echo " Cleaning duplicated package configuration"
-echo "=========================================================="
-
-TMP_CONFIG="/tmp/openwrt_package_config.tmp"
-
-grep '^CONFIG_PACKAGE_' .config > "${TMP_CONFIG}" || true
-
-awk -F= '
-{
-    key=$1
-    value[key]=$0
-}
-END {
-    for (key in value)
-        print value[key]
-}
-' "${TMP_CONFIG}" > /tmp/openwrt_package_config_unique.tmp || true
-
-echo "Package configuration checked."
+echo "PASS: Docker kernel support selected."
 
 echo ""
 
@@ -444,26 +390,18 @@ echo "=========================================================="
 
 make defconfig
 
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "=========================================================="
-    echo " ERROR: make defconfig failed!"
-    echo "=========================================================="
-    exit 1
-fi
-
 echo ""
-echo "make defconfig completed successfully."
+echo "PASS: make defconfig completed."
 
 echo ""
 
 
 #========================================================================================================================
-# 17. Display selected packages
+# 17. Verify packages
 #========================================================================================================================
 
 echo "=========================================================="
-echo " Final selected packages"
+echo " Checking final package configuration"
 echo "=========================================================="
 
 echo ""
@@ -476,7 +414,7 @@ echo ""
 
 
 #========================================================================================================================
-# 18. Check package directories
+# 18. Verify package source directories
 #========================================================================================================================
 
 echo "=========================================================="
@@ -505,7 +443,7 @@ echo ""
 
 
 #========================================================================================================================
-# 19. Shadowrocket explanation
+# 19. Shadowrocket
 #========================================================================================================================
 
 echo "=========================================================="
@@ -513,27 +451,21 @@ echo " Shadowrocket"
 echo "=========================================================="
 
 echo ""
-echo "Shadowrocket cannot be compiled into OpenWrt."
+echo "Shadowrocket is an external client application."
+echo "It cannot be compiled into OpenWrt firmware."
 echo ""
-echo "It is an external client application."
+echo "OpenWrt side:"
+echo "  PassWall"
+echo "  OpenClash"
+echo "  HomeProxy"
 echo ""
-echo "Use:"
-echo "  - PassWall"
-echo "  - OpenClash"
-echo "  - HomeProxy"
-echo ""
-echo "for the OpenWrt side."
-echo ""
-
-echo ""
-
 
 #========================================================================================================================
-# 20. Final result
+# 20. Final
 #========================================================================================================================
 
 echo "=========================================================="
-echo "       DIY PART2 CONFIGURATION COMPLETED"
+echo " DIY PART2 CONFIGURATION COMPLETED"
 echo "=========================================================="
 
 echo ""
@@ -550,6 +482,7 @@ echo ""
 echo "Shadowrocket:"
 echo "  External client - NOT included in firmware."
 echo ""
+
 echo "=========================================================="
 echo " Ready for OpenWrt compilation"
 echo "=========================================================="
