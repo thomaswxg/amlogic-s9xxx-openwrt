@@ -17,13 +17,18 @@
 #   Samba
 #   TTYD
 #
+# Fixed:
+#   Remove luci-proto-batman-adv because the current target does not
+#   provide kmod-batman-adv.
+#
 # Shadowrocket:
 #   External client application.
-#   It cannot be compiled into OpenWrt.
+#   It cannot be compiled into OpenWrt firmware.
 #========================================================================================================================
 
 
 set -e
+
 
 echo ""
 echo "=========================================================="
@@ -36,6 +41,11 @@ echo ""
 # 1. Build information
 #========================================================================================================================
 
+echo "=========================================================="
+echo " Build information"
+echo "=========================================================="
+
+echo ""
 echo ">>> OpenWrt source:"
 git remote -v || true
 
@@ -61,6 +71,11 @@ git clone \
     -b main \
     https://github.com/ophub/luci-app-amlogic.git \
     package/luci-app-amlogic
+
+if [ ! -d "package/luci-app-amlogic" ]; then
+    echo "ERROR: luci-app-amlogic installation failed."
+    exit 1
+fi
 
 echo "PASS: luci-app-amlogic installed."
 
@@ -91,17 +106,22 @@ echo ""
 
 
 #========================================================================================================================
-# 4. Install PassWall feeds
+# 4. Install PassWall feed packages
 #========================================================================================================================
 
 echo "=========================================================="
 echo " Installing PassWall feed packages"
 echo "=========================================================="
 
-./scripts/feeds install -a -p passwall_packages || true
-./scripts/feeds install -a -p passwall_luci || true
+if grep -q "passwall_packages" feeds.conf.default; then
+    ./scripts/feeds install -a -p passwall_packages || true
+fi
 
-echo "PassWall feed installation completed."
+if grep -q "passwall_luci" feeds.conf.default; then
+    ./scripts/feeds install -a -p passwall_luci || true
+fi
+
+echo "PASS: PassWall feed processing completed."
 
 echo ""
 
@@ -122,20 +142,21 @@ git clone \
     https://github.com/vernesong/OpenClash.git \
     /tmp/OpenClash
 
-if [ -d "/tmp/OpenClash/luci-app-openclash" ]; then
-
-    cp -a \
-        /tmp/OpenClash/luci-app-openclash \
-        package/luci-app-openclash
-
-else
-
+if [ ! -d "/tmp/OpenClash/luci-app-openclash" ]; then
     echo "ERROR: OpenClash package directory not found."
     exit 1
-
 fi
 
+cp -a \
+    /tmp/OpenClash/luci-app-openclash \
+    package/luci-app-openclash
+
 rm -rf /tmp/OpenClash
+
+if [ ! -d "package/luci-app-openclash" ]; then
+    echo "ERROR: OpenClash installation failed."
+    exit 1
+fi
 
 echo "PASS: OpenClash installed."
 
@@ -158,6 +179,11 @@ git clone \
     https://github.com/immortalwrt/homeproxy.git \
     /tmp/homeproxy
 
+if [ ! -d "/tmp/homeproxy" ]; then
+    echo "ERROR: HomeProxy clone failed."
+    exit 1
+fi
+
 mkdir -p package/luci-app-homeproxy
 
 cp -a \
@@ -165,6 +191,11 @@ cp -a \
     package/luci-app-homeproxy/
 
 rm -rf /tmp/homeproxy
+
+if [ ! -d "package/luci-app-homeproxy" ]; then
+    echo "ERROR: HomeProxy installation failed."
+    exit 1
+fi
 
 echo "PASS: HomeProxy installed."
 
@@ -331,6 +362,9 @@ echo ""
 
 #========================================================================================================================
 # 14. USB / Storage support
+#
+# Your S905 box has USB 2.0.
+# These packages are useful for USB storage and Samba/Docker data.
 #========================================================================================================================
 
 echo "=========================================================="
@@ -351,7 +385,7 @@ CONFIG_PACKAGE_kmod-fs-vfat=y
 
 EOF
 
-echo "PASS: Storage support selected."
+echo "PASS: USB / Storage support selected."
 
 echo ""
 
@@ -381,7 +415,39 @@ echo ""
 
 
 #========================================================================================================================
-# 16. Run defconfig
+# 16. IMPORTANT FIX
+#
+# The previous build failed because:
+#
+#   luci-proto-batman-adv
+#       requires
+#   kmod-batman-adv
+#
+# but:
+#
+#   kmod-batman-adv
+#
+# is not available in the generated package repository for this target.
+#
+# We do not need Batman-adv for this S905 router.
+#
+# Therefore remove both entries from .config if they exist.
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Removing unsupported Batman-adv packages"
+echo "=========================================================="
+
+sed -i '/^CONFIG_PACKAGE_luci-proto-batman-adv=/d' .config
+sed -i '/^CONFIG_PACKAGE_kmod-batman-adv=/d' .config
+
+echo "PASS: Batman-adv packages removed from configuration."
+
+echo ""
+
+
+#========================================================================================================================
+# 17. Run make defconfig
 #========================================================================================================================
 
 echo "=========================================================="
@@ -397,11 +463,69 @@ echo ""
 
 
 #========================================================================================================================
-# 17. Verify packages
+# 18. Remove Batman-adv again after defconfig
+#
+# make defconfig may regenerate dependency selections.
+# Therefore check and remove them again.
 #========================================================================================================================
 
 echo "=========================================================="
-echo " Checking final package configuration"
+echo " Re-checking Batman-adv packages"
+echo "=========================================================="
+
+sed -i '/^CONFIG_PACKAGE_luci-proto-batman-adv=/d' .config
+sed -i '/^CONFIG_PACKAGE_kmod-batman-adv=/d' .config
+
+echo "PASS: Batman-adv configuration cleaned."
+
+echo ""
+
+
+#========================================================================================================================
+# 19. Run defconfig one final time
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Running final make defconfig"
+echo "=========================================================="
+
+make defconfig
+
+echo ""
+echo "PASS: Final make defconfig completed."
+
+echo ""
+
+
+#========================================================================================================================
+# 20. Verify Batman-adv is not selected
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Verifying Batman-adv configuration"
+echo "=========================================================="
+
+if grep -q '^CONFIG_PACKAGE_luci-proto-batman-adv=y' .config; then
+    echo "ERROR: luci-proto-batman-adv is still enabled."
+    exit 1
+fi
+
+if grep -q '^CONFIG_PACKAGE_kmod-batman-adv=y' .config; then
+    echo "ERROR: kmod-batman-adv is still enabled."
+    exit 1
+fi
+
+echo "PASS: Batman-adv packages are disabled."
+
+echo ""
+
+
+#========================================================================================================================
+# 21. Display final selected packages
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Final selected packages"
 echo "=========================================================="
 
 echo ""
@@ -414,7 +538,7 @@ echo ""
 
 
 #========================================================================================================================
-# 18. Verify package source directories
+# 22. Check package source directories
 #========================================================================================================================
 
 echo "=========================================================="
@@ -424,26 +548,42 @@ echo "=========================================================="
 if [ -d "package/luci-app-openclash" ]; then
     echo "PASS: OpenClash source exists."
 else
-    echo "WARNING: OpenClash source missing."
+    echo "ERROR: OpenClash source missing."
+    exit 1
 fi
 
 if [ -d "package/luci-app-homeproxy" ]; then
     echo "PASS: HomeProxy source exists."
 else
-    echo "WARNING: HomeProxy source missing."
+    echo "ERROR: HomeProxy source missing."
+    exit 1
 fi
 
 if [ -d "package/luci-app-amlogic" ]; then
     echo "PASS: luci-app-amlogic source exists."
 else
-    echo "WARNING: luci-app-amlogic source missing."
+    echo "ERROR: luci-app-amlogic source missing."
+    exit 1
 fi
 
 echo ""
 
 
 #========================================================================================================================
-# 19. Shadowrocket
+# 23. Display kernel information
+#========================================================================================================================
+
+echo "=========================================================="
+echo " Kernel configuration"
+echo "=========================================================="
+
+grep -E '^CONFIG_KERNEL' .config 2>/dev/null | head -20 || true
+
+echo ""
+
+
+#========================================================================================================================
+# 24. Shadowrocket explanation
 #========================================================================================================================
 
 echo "=========================================================="
@@ -455,17 +595,18 @@ echo "Shadowrocket is an external client application."
 echo "It cannot be compiled into OpenWrt firmware."
 echo ""
 echo "OpenWrt side:"
+echo ""
 echo "  PassWall"
 echo "  OpenClash"
 echo "  HomeProxy"
 echo ""
 
 #========================================================================================================================
-# 20. Final
+# 25. Final result
 #========================================================================================================================
 
 echo "=========================================================="
-echo " DIY PART2 CONFIGURATION COMPLETED"
+echo "       DIY PART2 CONFIGURATION COMPLETED"
 echo "=========================================================="
 
 echo ""
@@ -478,6 +619,11 @@ echo "  [4] AdGuard Home"
 echo "  [5] Docker"
 echo "  [6] Samba"
 echo "  [7] TTYD"
+echo ""
+echo "Removed unsupported:"
+echo ""
+echo "  [X] luci-proto-batman-adv"
+echo "  [X] kmod-batman-adv"
 echo ""
 echo "Shadowrocket:"
 echo "  External client - NOT included in firmware."
